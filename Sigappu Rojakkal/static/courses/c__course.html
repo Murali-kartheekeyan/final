@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Module</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons for UI elements -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Simple fade-in animation for the modal */
+        .modal-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Custom prose styles for Gemini API response */
+        .prose p {
+            margin-bottom: 1rem;
+        }
+        .prose h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #374151; /* text-gray-700 */
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col items-center font-sans">
+
+    <!-- Header Section -->
+    <header class="bg-white shadow-sm p-4 flex justify-between items-center w-full">
+        <div class="flex items-center gap-4">
+            <button class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <i data-lucide="arrow-left" class="text-gray-600"></i>
+            </button>
+            <h1 class="text-xl font-semibold text-gray-800">Fundamentals of Javascript</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="ask-ai-btn" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all duration-300 shadow-lg transform hover:scale-105">
+                <i data-lucide="sparkles" class="w-5 h-5 text-yellow-300"></i>
+                <span class="font-medium">ASK DOUBTS TO OUR AI </span>
+            </button>
+            <button class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <i data-lucide="user" class="text-gray-600"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="w-full max-w-4xl p-4 md:p-8 flex-grow flex flex-col">
+        <!-- Progress Bar -->
+        <div class="w-full bg-gray-200 rounded-full h-2.5 my-4">
+            <div id="progress-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: 10%;"></div>
+        </div>
+        
+        <!-- Image Display -->
+        <div class="relative w-full aspect-video bg-gray-200 rounded-xl shadow-lg overflow-hidden">
+            <img id="course-image" src="" alt="Course Content" class="w-full h-full object-cover">
+        </div>
+
+        <!-- Timer and Navigation -->
+        <div class="mt-4 w-full flex flex-col items-center gap-4">
+            <div id="timer-display" class="text-center p-2 rounded-lg"></div>
+            <div id="completion-message" class="hidden text-center p-3 rounded-lg bg-yellow-100 text-yellow-800 font-semibold">
+                Congratulations! You've completed the course successfully.
+            </div>
+            <div class="flex justify-between w-full mt-4">
+                <button id="prev-btn" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
+                    Previous
+                </button>
+                <button id="next-btn" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-indigo-300 disabled:cursor-not-allowed">
+                    Next
+                </button>
+            </div>
+        </div>
+        
+        <!-- Slide Counter -->
+        <div class="text-center mt-4 text-gray-500">
+            <p id="slide-counter"></p>
+        </div>
+    </main>
+
+    <!-- AI "Ask Anything" Modal -->
+    <div id="ai-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 relative flex flex-col max-h-[90vh] modal-fade-in">
+            <button id="close-modal-btn" class="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200">
+                <i data-lucide="x" class="text-gray-500"></i>
+            </button>
+            <div class="flex items-center gap-4 mb-4">
+                <div class="bg-blue-100 p-3 rounded-full">
+                    <i data-lucide="brain-circuit" class="w-7 h-7 text-blue-600"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Ask about this topic</h2>
+                    <p id="modal-context" class="text-sm text-gray-500"></p>
+                </div>
+            </div>
+            
+            <div id="modal-content" class="flex-grow overflow-y-auto pr-2">
+                <!-- AI response, loading, and error messages will be injected here -->
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <p class="text-gray-600 mb-2 font-medium">Have a question? Ask away!</p>
+                <textarea id="question-input" placeholder="e.g., Can you explain what 'props' are in simpler terms?" class="w-full h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></textarea>
+                <button id="submit-question-btn" class="w-full mt-4 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    Submit Question
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DATA AND CONSTANTS ---
+            const courseModules = [
+                { title: 'Introduction', imageUrl: 'https://i.postimg.cc/yYCczG2T/1.png' },
+                { title: 'Course Agenda', imageUrl: 'https://i.postimg.cc/44VHw5nH/2.png'},
+                { title: 'Introduction to javascript', imageUrl: 'https://i.postimg.cc/bN6yRD02/3.png'},
+                { title: 'Javascript Data Types', imageUrl: 'https://i.postimg.cc/HsjDdS5V/4.png' },
+                { title: 'Basic Programs', imageUrl: 'https://i.postimg.cc/wBpGyFt5/5.png' },
+                { title: 'Function decarations', imageUrl: 'https://i.postimg.cc/wvb2VkBG/6.png'},
+                { title: 'Conclusions', imageUrl: 'https://i.postimg.cc/L5tTpFTr/7.png '},
+            ];
+            const TIMER_DURATION = 30; // 2 minutes
+
+            // --- STATE VARIABLES ---
+            let currentImageIndex = 0;
+            let timeRemaining = TIMER_DURATION;
+            let isTimerActive = true;
+            let timerInterval;
+
+            // --- DOM ELEMENT REFERENCES ---
+            const progressBar = document.getElementById('progress-bar');
+            const courseImage = document.getElementById('course-image');
+            const timerDisplay = document.getElementById('timer-display');
+            const completionMessage = document.getElementById('completion-message');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const slideCounter = document.getElementById('slide-counter');
+            
+            // Modal elements
+            const aiModal = document.getElementById('ai-modal');
+            const askAiBtn = document.getElementById('ask-ai-btn');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const modalContext = document.getElementById('modal-context');
+            const modalContent = document.getElementById('modal-content');
+            const questionInput = document.getElementById('question-input');
+            const submitQuestionBtn = document.getElementById('submit-question-btn');
+
+            // --- GEMINI API FUNCTION ---
+            const callGeminiAPI = async (prompt) => {
+                const apiKey = "AIzaSyAd-ReC74i1FhKHKyAJ1LCN-iirmrHZrTE"; // API key will be injected by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                    const result = await response.json();
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error("Failed to get a valid response from the AI.");
+                    }
+                } catch (error) {
+                    console.error("Error calling Gemini API:", error);
+                    throw error;
+                }
+            };
+
+            // --- UI UPDATE FUNCTION ---
+            const updateUI = () => {
+                // Update image and slide counter
+                const currentModule = courseModules[currentImageIndex];
+                courseImage.src = currentModule.imageUrl;
+                courseImage.alt = currentModule.title;
+                slideCounter.textContent = `Slide ${currentImageIndex + 1} of ${courseModules.length}: ${currentModule.title}`;
+
+                // Update progress bar
+                const progress = (currentImageIndex + 1) * 10;
+                progressBar.style.width = `${progress}%`;
+
+                // Update button states
+                prevBtn.disabled = currentImageIndex === 0;
+                nextBtn.disabled = isTimerActive || currentImageIndex === courseModules.length - 1;
+                
+                // Show completion message on the last slide
+                if (currentImageIndex === courseModules.length - 1) {
+                    timerDisplay.classList.add('hidden');
+                    completionMessage.classList.remove('hidden');
+                } else {
+                    timerDisplay.classList.remove('hidden');
+                    completionMessage.classList.add('hidden');
+                }
+            };
+
+            // --- TIMER FUNCTIONS ---
+            const updateTimerDisplay = () => {
+                if (isTimerActive) {
+                    timerDisplay.className = 'text-center p-2 rounded-lg bg-red-100 text-red-700';
+                    timerDisplay.innerHTML = `Next slide unlocks in: <span class="font-bold">${Math.floor(timeRemaining / 60)}:${(timeRemaining % 60).toString().padStart(2, '0')}</span>`;
+                } else {
+                    timerDisplay.className = 'text-center p-2 rounded-lg bg-green-100 text-green-700';
+                    timerDisplay.innerHTML = `<p class="font-bold">You can now proceed to the next slide!</p>`;
+                }
+            };
+
+            const startTimer = () => {
+                if (currentImageIndex === courseModules.length - 1) {
+                    isTimerActive = false;
+                    updateUI();
+                    return;
+                }
+                
+                isTimerActive = true;
+                timeRemaining = TIMER_DURATION;
+                updateTimerDisplay();
+                
+                timerInterval = setInterval(() => {
+                    timeRemaining--;
+                    updateTimerDisplay();
+                    if (timeRemaining <= 0) {
+                        clearInterval(timerInterval);
+                        isTimerActive = false;
+                        updateUI(); // Update button state
+                        updateTimerDisplay();
+                    }
+                }, 1000);
+            };
+
+            const resetTimer = () => {
+                clearInterval(timerInterval);
+                startTimer();
+            };
+
+            // --- NAVIGATION HANDLERS ---
+            const handleNext = () => {
+                if (currentImageIndex < courseModules.length - 1) {
+                    currentImageIndex++;
+                    updateUI();
+                    resetTimer();
+                }
+            };
+
+            const handlePrev = () => {
+                if (currentImageIndex > 0) {
+                    currentImageIndex--;
+                    updateUI();
+                    resetTimer();
+                }
+            };
+
+            // --- MODAL HANDLERS ---
+            const openModal = () => {
+                modalContext.textContent = `Context: ${courseModules[currentImageIndex].title}`;
+                modalContent.innerHTML = ''; // Clear previous content
+                questionInput.value = '';
+                aiModal.classList.remove('hidden');
+            };
+
+            const closeModal = () => {
+                aiModal.classList.add('hidden');
+            };
+
+            const handleAskAISubmit = async () => {
+                const question = questionInput.value.trim();
+                if (!question) return;
+
+                // Update UI to show loading state
+                submitQuestionBtn.disabled = true;
+                questionInput.disabled = true;
+                modalContent.innerHTML = `
+                    <div class="flex justify-center items-center gap-3 text-gray-600 p-8">
+                        <i data-lucide="loader-circle" class="animate-spin w-6 h-6"></i>
+                        <span>Thinking...</span>
+                    </div>`;
+                lucide.createIcons(); // Re-render icons
+
+                const prompt = `You are a friendly and helpful AI assistant for an online course about React. A student is currently on the module titled "${courseModules[currentImageIndex].title}". They have the following question: "${question}". Please provide a clear, concise, and easy-to-understand answer. Format your response in simple paragraphs.`;
+
+                try {
+                    const result = await callGeminiAPI(prompt);
+                    const formattedAnswer = result.split('\n').map(p => `<p>${p}</p>`).join('');
+                    modalContent.innerHTML = `
+                        <div class="prose max-w-none bg-gray-50 p-4 rounded-lg">
+                            <h3>Answer:</h3>
+                            ${formattedAnswer}
+                        </div>`;
+                } catch (err) {
+                    modalContent.innerHTML = `<p class="text-red-500 bg-red-50 p-3 rounded-lg">Sorry, I encountered an error. Please try again.</p>`;
+                } finally {
+                    submitQuestionBtn.disabled = false;
+                    questionInput.disabled = false;
+                }
+            };
+
+            // --- EVENT LISTENERS ---
+            nextBtn.addEventListener('click', handleNext);
+            prevBtn.addEventListener('click', handlePrev);
+            askAiBtn.addEventListener('click', openModal);
+            closeModalBtn.addEventListener('click', closeModal);
+            submitQuestionBtn.addEventListener('click', handleAskAISubmit);
+            // Close modal if clicking outside of it
+            aiModal.addEventListener('click', (e) => {
+                if (e.target === aiModal) {
+                    closeModal();
+                }
+            });
+
+
+            // --- INITIALIZATION ---
+            lucide.createIcons(); // Initial render for all icons
+            updateUI();
+            startTimer();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Management - LMS Portal</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin_style.css') }}">
+</head>
+<body>
+
+  <div id="toast-container"></div>
+
+  <div id="employeeModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add New Employee</h3>
+        <button class="close-btn" onclick="closeModal('employeeModal')">&times;</button>
+      </div>
+      <form id="employeeForm" onsubmit="handleFormSubmit(event)">
+        <input type="hidden" id="empId">
+        <h4 style="color: var(--text-muted); margin-bottom: 1rem;">Credentials</h4>
+        <div class="form-grid">
+            <div class="input-group"><label for="name">Full Name</label><input type="text" id="name" placeholder="e.g., Jane Doe" required></div>
+            <div class="input-group"><label for="password">Password</label><input type="password" id="password" placeholder="Set a temporary password" required></div>
+        </div>
+        <hr style="border-color: var(--border-color); margin: 2rem 0;">
+        <h4 style="color: var(--text-muted); margin-bottom: 1rem;">Initial Proficiency Scores (0-100)</h4>
+        <div class="form-grid">
+            <div class="input-group"><label for="HTML">HTML</label><input type="number" id="HTML" value="0" min="0" max="100"></div>
+            <div class="input-group"><label for="CSS">CSS</label><input type="number" id="CSS" value="0" min="0" max="100"></div>
+            <div class="input-group"><label for="JAVASCRIPT">JavaScript</label><input type="number" id="JAVASCRIPT" value="0" min="0" max="100"></div>
+            <div class="input-group"><label for="PYTHON">Python</label><input type="number" id="PYTHON" value="0" min="0" max="100"></div>
+            <div class="input-group"><label for="JAVA">Java</label><input type="number" id="JAVA" value="0" min="0" max="100"></div>
+            <div class="input-group"><label for="C">C</label><input type="number" id="C" value="0" min="0" max="100"></div>
+            <div class="input-group"><label for="CPP">C++</label><input type="number" id="CPP" value="0" min="0" max="100"></div>
+            <div class="input-group"><label for="SQL_TESTING">SQL Testing</label><input type="number" id="SQL_TESTING" value="0" min="0" max="100"></div>
+            <div class="input-group"><label for="TOOLS_COURSE">Testing Tools</label><input type="number" id="TOOLS_COURSE" value="0" min="0" max="100"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="action-btn" id="submitBtn">Add Employee</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="uploadModal" class="modal-overlay">
+      <div class="modal-content" style="max-width: 700px;">
+          <div class="modal-header"><h3>Onboard via File Upload</h3><button class="close-btn" onclick="closeModal('uploadModal')">&times;</button></div>
+          <div class="upload-box" id="drop-area">
+              <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+              <p>Drag & drop a file (.csv, .xlsx) here</p>
+              <p style="font-size: 0.8rem; color: var(--text-muted);">Required column: NAME. Optional: score columns like HTML_SCORE.</p>
+              <input type="file" id="fileElem" accept=".csv,.xlsx">
+          </div>
+          <div id="file-name" style="text-align: center; margin-top: 1.5rem; font-weight: 600; color: var(--primary-light);">No file selected</div>
+          <div class="modal-footer">
+              <button id="uploadBtn" class="action-btn" disabled>Upload & Process</button>
+          </div>
+      </div>
+  </div>
+
+  <div id="profileAgentModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="profileModalTitle">AI Profile Agent Analysis</h3>
+        <button class="close-btn" onclick="closeModal('profileAgentModal')">&times;</button>
+      </div>
+      <div id="profileAgentResult" class="profile-agent-content">
+        </div>
+    </div>
+  </div>
+
+  <div class="dashboard-container">
+    <nav class="sidebar">
+      <a href="{{ url_for('admin.dashboard_admin') }}" class="sidebar-header">
+        <i class="fas fa-brain logo-icon"></i><h1>LMS Admin</h1>
+      </a>
+      <div class="sidebar-nav">
+        <h3>Admin Tools</h3>
+        <ul>
+          <li><a href="{{ url_for('admin.dashboard_admin') }}"><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+          <li><a href="{{ url_for('admin.management_page') }}" class="active"><i class="fas fa-users-cog"></i> Employee Management</a></li>
+          <li><a href="{{ url_for('admin.agent_metrics_page') }}"><i class="fas fa-chart-simple"></i> Agent Metrics</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-footer">
+         <div class="sidebar-nav">
+             <h3>Account</h3>
+             <ul><li><a href="#" onclick="logout(event)"><i class="fas fa-sign-out-alt"></i> Logout</a></li></ul>
+         </div>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <header class="main-header">
+        <h2>Employee Management</h2>
+        <div>
+            <button class="action-btn" onclick="openModal('employeeModal')"><i class="fas fa-user-plus"></i> Add Manually</button>
+            <button class="action-btn" onclick="openModal('uploadModal')" style="background-color: var(--success-color);"><i class="fas fa-file-upload"></i> Bulk Onboard</button>
+        </div>
+      </header>
+      
+      <div class="table-container">
+        <table class="employee-table">
+          <thead><tr><th>Emp ID</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead>
+          <tbody id="employeeTableBody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  
+  <script src="{{ url_for('static', filename='admin_script.js') }}"></script>
+</body>
+</html>

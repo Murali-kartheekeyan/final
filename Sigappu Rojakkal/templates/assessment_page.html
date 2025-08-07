@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>My Assessments - LMS Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    <style>
+        :root {
+          --primary-color: #00d9ff; --primary-light: #a7f3ff; --primary-dark: #00b8d4; --background-color: #0f172a; --sidebar-bg: #1e293b; --card-bg: #1e293b; --text-color: #f8fafc; --text-muted: #94a3b8; --border-color: #334155;
+        }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--background-color); color: var(--text-color); }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background-color: var(--sidebar-bg); padding: 1.5rem; display: flex; flex-direction: column; }
+        .sidebar-header-link { text-decoration: none; color: inherit; }
+        .sidebar-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2.5rem; }
+        .sidebar-header .logo-icon { font-size: 2rem; color: var(--primary-color); }
+        .sidebar-header h1 { font-size: 1.5rem; font-weight: 600; }
+        .sidebar-nav h3 { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 1.5rem 0 0.75rem; }
+        .sidebar-nav ul { list-style: none; padding: 0; }
+        .sidebar-nav ul li a { color: var(--text-muted); text-decoration: none; display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 8px; font-weight: 500; margin-bottom: 0.25rem; }
+        .sidebar-nav ul li a i { margin-right: 1rem; min-width: 20px; text-align: center; font-size: 1.1rem; }
+        .sidebar-nav ul li a.active { background-color: var(--primary-color); color: var(--background-color); font-weight: 600; }
+        .sidebar-footer { margin-top: auto; }
+        .main-content { flex: 1; padding: 2rem; }
+        .assessment-container { background-color: var(--card-bg); border-radius: 12px; padding: 2rem; max-width: 800px; margin: auto; }
+        .loader { border: 4px solid var(--border-color); border-top: 4px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .question-block { margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; }
+        .question-block p { font-size: 1.1rem; margin-bottom: 1rem; }
+        .options-list { list-style: none; padding: 0; }
+        .options-list li { margin-bottom: 0.75rem; }
+        .options-list input { margin-right: 10px; }
+        .submit-btn { background-color: var(--primary-color); color: #000; border: none; padding: 0.75rem 2rem; font-weight: 600; border-radius: 8px; cursor: pointer; display: block; margin-top: 1rem; }
+        .assessment-btn { background-color: var(--primary-dark); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+             <a href="{{ url_for('employee.dashboard_employee') }}" class="sidebar-header-link"><div class="sidebar-header"><i class="fas fa-user-graduate logo-icon"></i><h1>Employee</h1></div></a>
+             <div class="sidebar-nav">
+                <h3>Learning</h3>
+                <ul>
+                    <li><a href="{{ url_for('employee.dashboard_employee') }}"><i class="fas fa-road"></i> My Learning Path</a></li>
+                    <li><a href="{{ url_for('employee.assessment_page') }}" class="active"><i class="fas fa-tasks"></i> My Assessment</a></li>
+                </ul>
+            </div>
+             <div class="sidebar-footer">
+                 <div class="sidebar-nav"><h3>Account</h3><ul><li><a href="#" onclick="logout(event)"><i class="fas fa-sign-out-alt"></i> Sign Out</a></li></ul></div>
+             </div>
+        </nav>
+        <main class="main-content">
+            <div id="assessmentContainer" class="assessment-container">
+                <h2>My Assessments</h2>
+                <p class="text-muted">Select a course to begin the assessment.</p>
+                <div id="assessmentList"></div>
+                <div id="quizContainer" style="display: none;"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const assessmentListEl = document.getElementById('assessmentList');
+        const quizContainerEl = document.getElementById('quizContainer');
+        let currentQuestions = [];
+        let currentPathId = null;
+
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.textContent = str;
+            return p.innerHTML;
+        }
+
+        async function loadPendingAssessments() {
+            assessmentListEl.innerHTML = `<div class="loader"></div>`;
+            const response = await fetch('/employee/get_pending_assessments', { credentials: 'include' });
+            const data = await response.json();
+            assessmentListEl.innerHTML = '';
+            if (data.success && data.assessments.length > 0) {
+                data.assessments.forEach(asm => {
+                    const btn = document.createElement('button');
+                    btn.textContent = `Start Assessment for: ${asm.course_name}`;
+                    btn.onclick = () => loadQuiz(asm.path_id, asm.course_name);
+                    btn.className = 'assessment-btn';
+                    assessmentListEl.appendChild(btn);
+                });
+            } else {
+                assessmentListEl.innerHTML = '<p>No pending assessments. Complete a course to unlock one!</p>';
+            }
+        }
+
+        async function loadQuiz(pathId, courseName) {
+            currentPathId = pathId;
+            quizContainerEl.style.display = 'block';
+            quizContainerEl.innerHTML = `<div class="loader"></div>`;
+            assessmentListEl.style.display = 'none';
+
+            const response = await fetch('/employee/get_assessment_questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ course_name: courseName }),
+                credentials: 'include'
+            });
+            const questions = await response.json();
+            currentQuestions = questions;
+            
+            let quizHtml = `<h3>${courseName} Assessment</h3>`;
+            questions.forEach((q, index) => {
+                quizHtml += `
+                    <div class="question-block">
+                        <p><b>${index + 1}. ${escapeHTML(q.question)}</b></p>
+                        <ul class="options-list">
+                            ${q.options.map((opt, i) => `
+                                <li>
+                                    <input type="radio" name="q${index}" id="q${index}o${i}" value="${i}">
+                                    <label for="q${index}o${i}">${escapeHTML(opt)}</label>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            });
+            quizHtml += `<button class="submit-btn" onclick="submitQuiz()">Submit Answers</button>`;
+            quizContainerEl.innerHTML = quizHtml;
+        }
+
+        async function submitQuiz() {
+            const answers = {};
+            currentQuestions.forEach((q, index) => {
+                const selected = document.querySelector(`input[name="q${index}"]:checked`);
+                if (selected) {
+                    answers[index] = selected.value;
+                }
+            });
+
+            const response = await fetch('/employee/submit_assessment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    path_id: currentPathId,
+                    answers: answers,
+                    questions: currentQuestions
+                }),
+                credentials: 'include'
+            });
+            const result = await response.json();
+            alert(result.message);
+            window.location.href = "{{ url_for('employee.dashboard_employee') }}";
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadPendingAssessments);
+        
+        async function logout(event) {
+          event.preventDefault();
+          await fetch("/logout", {method: "POST", credentials: "include"});
+          window.location.href = "/";
+        }
+    </script>
+</body>
+</html>

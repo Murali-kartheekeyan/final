@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course: {{ course_name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    <style>
+        :root {
+          --primary-color: #00d9ff; --primary-light: #a7f3ff; --primary-dark: #00b8d4; --background-color: #0f172a; --card-bg: #1e293b; --text-color: #f8fafc; --text-muted: #94a3b8; --border-color: #334155;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+        }
+        .course-header {
+            padding: 1rem 2rem;
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .course-header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        .course-header a {
+            color: var(--primary-light);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .course-content {
+            flex-grow: 1;
+            border: none;
+            width: 100%;
+        }
+        .course-footer {
+            padding: 1rem 2rem;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .nav-btn {
+            background-color: var(--primary-color);
+            color: var(--background-color);
+            border: none;
+            padding: 0.75rem 2rem;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .nav-btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .nav-btn:disabled {
+            background-color: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+        .progress-info {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <header class="course-header">
+        <h1>{{ course_name }}</h1>
+        <!-- CORRECTED: This link now points to the employee dashboard -->
+        <a href="{{ url_for('dashboard_employee') }}">
+            <i class="fas fa-times"></i> Close
+        </a>
+    </header>
+
+    <iframe id="courseFrame" class="course-content" src="{{ url_for('static', filename=course_file) }}"></iframe>
+
+    <footer class="course-footer">
+        <button id="prevBtn" class="nav-btn" onclick="navigate(-1)" disabled><i class="fas fa-arrow-left"></i> Previous</button>
+        <div id="progressInfo" class="progress-info">Slide 1 of {{ total_slides }}</div>
+        <button id="nextBtn" class="nav-btn" onclick="navigate(1)">Next <i class="fas fa-arrow-right"></i></button>
+    </footer>
+
+    <script>
+        const pathId = {{ path_id }};
+        const courseName = "{{ course_name }}";
+        const totalSlides = parseInt("{{ total_slides }}");
+        let currentSlide = 1;
+
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressInfo = document.getElementById('progressInfo');
+
+        function updateUI() {
+            progressInfo.textContent = `Slide ${currentSlide} of ${totalSlides}`;
+            prevBtn.disabled = currentSlide === 1;
+            nextBtn.disabled = currentSlide === totalSlides;
+        }
+
+        async function updateProgressInDB() {
+            const progress = Math.round((currentSlide / totalSlides) * 100);
+            
+            try {
+                await fetch('/employee/update_progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        path_id: pathId,
+                        progress: progress
+                    }),
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error("Failed to update progress:", error);
+            }
+        }
+
+        function navigate(direction) {
+            currentSlide += direction;
+
+            if (currentSlide < 1) currentSlide = 1;
+            if (currentSlide > totalSlides) currentSlide = totalSlides;
+            
+            updateUI();
+            updateProgressInDB();
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
